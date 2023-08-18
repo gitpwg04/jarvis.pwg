@@ -1,0 +1,133 @@
+import speech_recognition as sr
+import os
+import webbrowser
+import openai
+from config import apikey
+import datetime
+import pyttsx3
+import random
+
+
+engine = pyttsx3.init('sapi5')
+voices = engine.getProperty('voices')
+engine.setProperty('voice', voices[0].id)
+
+
+chatStr = ""
+def chat(query):
+    global chatStr
+    print(chatStr)
+    openai.api_key = apikey
+    chatStr += f"sir: {query}\n Jarvis: "
+    response = openai.Completion.create(
+        model="text-davinci-003",
+        prompt= chatStr,
+        temperature=0.7,
+        max_tokens=256,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    # todo: Wrap this inside of a  try catch block
+    speak(response["choices"][0]["text"])
+    chatStr += f"{response['choices'][0]['text']}\n"
+    return response["choices"][0]["text"]
+
+
+def ai(prompt):
+    openai.api_key = apikey
+    text = f"OpenAI response for Prompt: {prompt} \n *********\n\n"
+
+    response = openai.Completion.create(
+        model="gpt-3.5-turbo",
+        prompt=prompt,
+        temperature=0.7,
+        max_tokens=256,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0
+    )
+    # todo: Wrap this inside of a  try catch block
+    # print(response["choices"][0]["text"])
+    text += response["choices"][0]["text"]
+    if not os.path.exists("Openai"):
+        os.mkdir("Openai")
+
+    # with open(f"Openai/prompt- {random.randint(1, 2343434356)}", "w") as f:
+    with open(f"Openai/{''.join(prompt.split('intelligence')[1:]).strip() }.txt", "w") as f:
+        f.write(text)
+
+def speak(audio):
+    engine.say(audio)
+    engine.runAndWait()
+
+# to convert voice into text
+def takeCommand():
+    recognizer = sr.Recognizer()
+    with sr.Microphone() as source:
+        # print("Listning...")
+        recognizer.pause_threshold = 1
+        # recognizer.self.pause_threshold = 0.8
+        audio = recognizer.listen(source)
+
+    try:
+        print("Recognizing...")
+        query = recognizer.recognize_google(audio)
+        print(f"user said:{query}\n")
+        # print('query')
+        return query
+        # speak('query')
+
+    except Exception as e:
+        speak("sorry sir, cant here you properly")
+        return "None"
+    return query
+
+def wishme():
+    hour = int(datetime.datetime.now().hour)
+    if hour <= 0 and hour >= 11:
+        speak("good morning sir")
+    elif hour > 12 and hour < 18:
+        speak(" good afternoon sir ")
+    else:
+        speak("good evening sir ")
+    speak(" i am  jarvis, how may i help you?")
+
+if __name__ == "__main__":
+    while True:
+        print("Listening...")
+        query = takeCommand().lower()
+        # todo: Add more sites
+        sites = [["youtube", "https://www.youtube.com"], ["wikipedia", "https://www.wikipedia.com"], ["google", "https://www.google.com"],]
+        for site in sites:
+            if f"Open {site[0]}".lower() in query.lower():
+                speak(f"Opening {site[0]} sir...")
+                webbrowser.open(site[1])
+        if "open music" in query:
+            musicPath = "C:\\Users\\hp\\Music\\Playlists\\Hardwork"
+            os.system(f"open {musicPath}")
+
+        elif 'the time' in query:
+            strTime = datetime.datetime.now().strftime("%H:%M:%S")
+            speak(f"sir the time is {strTime}")
+
+        '''if "the time" in query:
+            hour = datetime.datetime.now().strftime("%H")
+            min = datetime.datetime.now().strftime("%M")
+            speak(f"Sir time is {hour} hour &  {min} minutes")'''
+
+        if "tell me".lower() in query.lower():
+            ai(prompt=query)
+
+        elif "jarvis quit".lower() in query.lower():
+            exit()
+
+        elif "reset chat".lower() in query.lower():
+            chatStr = ""
+
+        else:
+            # print("Chatting...")
+            chat(query)
+
+
+        # speak(query)
